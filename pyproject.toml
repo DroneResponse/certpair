@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "certpair"
+version = "0.1.0"
+description = "Find matching certificate and private key files using local mTLS file naming conventions."
+readme = "README.md"
+authors = [{ name = "Michael Murphy", email = "mmurph51@nd.edu" }]
+requires-python = ">=3.8"
+dependencies = [
+
+]
+
+[project.optional-dependencies]
+dev = [
+    "bump-my-version",
+    "build",
+    "devpi-client",
+    "pytest",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# [project.scripts]
+# certpair = "certpair._cli:main"
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
