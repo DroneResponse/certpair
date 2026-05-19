@@ -72,6 +72,57 @@ session = requests.Session()
 session.cert = certpair.find("~/tls/")
 ```
 
+## Config Details
+
+When your application needs a certificate/key pair, you can use:
+```python
+certpair.resolve(config)
+```
+Pass a configuration dictionary that your application has already loaded from
+JSON, TOML, YAML, or another source.
+
+`resolve()` checks the following environment variables:
+
+- `PUBLIC_CERT`: path to a `.crt` file
+- `PRIVATE_KEY`: path to a `.key` file
+- `TLS_PATH`: path to a directory containing matching `.crt` and `.key` files. If more than one pair exists then the one with the recently modified cert is selected.
+
+When you pass a config dictionary to `resolve()`, it looks for these keys:
+
+- `public_cert`: path to a `.crt` file
+- `private_key`: path to a `.key` file
+- `tls_path`: path to a directory containing matching `.crt` and `.key` files. If more than one pair exists then the one with the recently modified cert is selected.
+
+Resolution order:
+
+1. Environment variables `PUBLIC_CERT` and `PRIVATE_KEY`
+2. Environment variable `TLS_PATH`
+3. Config dictionary values `public_cert` and `private_key`
+4. Config dictionary value `tls_path`
+5. As a final fallback, the current working directory is searched for a matching `.crt` and `.key` pair
+
+Environment variables take precedence over values from the config dictionary.
+This means environment-provided values can be combined with config-based values
+when only part of the configuration is supplied.
+
+For example, if `PUBLIC_CERT` is set in the environment but `PRIVATE_KEY` is
+not, then `resolve()` will attempt to combine the `PUBLIC_CERT` env var with the `private_key` value from the
+config dictionary.
+
+The working-directory is checked as the final fallback.
+
+Example:
+
+```python
+import certpair
+import json
+
+with open("config.json") as f:
+  config = json.load(f)
+
+cert = certpair.resolve(config)
+```
+
 ## Installation
 
 For the fastest start, install directly from GitHub:
