@@ -59,8 +59,34 @@ def resolve(config: dict | None = None) -> tuple[str, str] | None:
     if config is None:
         config = {}
 
-    overall_config = ChainMap(_env_config(), config)
-    return _from_dict(overall_config)
+    env_conf = _env_config()
+    if env_conf:
+        result = _from_dict(env_conf)
+        if result:
+            return result
+        # if we were given a "complete config" via the environment variables but we didn't find a valid cert/key pair, then we should fail fast instead of falling back to the config dict...
+        # This is because if the environment variables are set then that's a strong signal that the user intended to use them, and if we silently ignore them and fall back to other sources then that could lead to confusion and make it harder for users to debug issues with their environment variable configuration.
+        # to determine if a dict is "complete" we check if it has both the PUBLIC_CERT_KEY and PRIVATE_KEY_KEY keys, or if it has the TLS_PATH_KEY key. If it has either of those then we consider it complete enough that if we don't find a valid cert/key pair then we should raise an error instead of falling back to the config dict.
+        if PUBLIC_CERT_KEY in env_conf and PRIVATE_KEY_KEY in env_conf:
+            raise ValueError(f"Invalid environment variables: {env_conf[PUBLIC_CERT_KEY]}, {env_conf[PRIVATE_KEY_KEY]}. Do these files exist?")
+        if TLS_PATH_KEY in env_conf:
+            raise ValueError(f"Invalid environment variables: {env_conf[TLS_PATH_KEY]}, does this directory exist and does it contain a cert/key pair?")
+
+    # if we made it this far then either there were no relevant environment variables set, or the environment variables that were set didn't lead to a complete config so now we'll combine the environment config with the supplied config dict and try to resolve a cert/key pair from that.
+    #  The environment variables take priority over the supplied config dict.
+    overall_config = ChainMap(env_conf, config)
+    result = _from_dict(overall_config)
+    if result:
+        return result
+    # if we have a complete overall config but we didn't find a valid cert/key pair, then we should fail fast instead of returning None, because the user provided a complete config.
+    # The user might have made a mistake in their config, and falling back to another source or returning None would make it harder for them to debug the issue with their config.
+    if (PUBLIC_CERT_KEY in overall_config and PRIVATE_KEY_KEY in overall_config):
+        raise ValueError(f"Invalid config: {overall_config[PUBLIC_CERT_KEY]}, {overall_config[PRIVATE_KEY_KEY]}. Do these files exist?")
+    if TLS_PATH_KEY in overall_config:
+        raise ValueError(f"Invalid config: {overall_config[TLS_PATH_KEY]}, does this directory exist and does it contain a cert/key pair?")
+
+    # final fallback: try to find a cert/key pair in the current working directory. This allows users to just drop cert/key files into the working directory without having to set any config or environment variables, and the library will pick them up automatically.
+    return find()
 
 
 def _env_config() -> dict:
