@@ -297,3 +297,25 @@ def test_resolve_raises_value_error_for_invalid_config_tls_path(tmp_path: Path, 
             "private_key": str(config_key),
             "tls_path": str(tmp_path),
         })
+
+
+def test_resolve_to_working_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    do not provide env vars
+    do not provide config
+
+    put a cert and key in the current working directory
+    """
+    cert_file = tmp_path / "working.crt"
+    key_file = tmp_path / "working.key"
+    cert_file.write_text("working cert")
+    key_file.write_text("working key")
+
+    monkeypatch.delenv("PUBLIC_CERT", raising=False)
+    monkeypatch.delenv("PRIVATE_KEY", raising=False)
+    monkeypatch.delenv("TLS_PATH", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    result = resolve()
+
+    assert result == (str(cert_file), str(key_file))
